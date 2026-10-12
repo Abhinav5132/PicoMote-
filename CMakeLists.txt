@@ -12,8 +12,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 pico_sdk_init()
 
 add_executable(remote-pi 
-  main.c
-  nec.c
+  src/main.c
+  src/nec.c
+  src/buttons.c
+  src/state.c
 )
 
 target_link_libraries(remote-pi 
