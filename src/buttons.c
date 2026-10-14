@@ -1,48 +1,109 @@
 #include "modes.h"
+#include <pico/time.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include "nec.h"
 #include "pico/stdlib.h"
 #include "defaults.h"
 #include "state.h"
+#include "hardware/adc.h"
 
 typedef struct{
     uint pin;
     ButtonBehaviour on_ir_mode;
     ButtonBehaviour on_controller_mode; 
     uint32_t last_press_time; 
+    bool is_range; 
 } RemoteButton;
 
+typedef struct {
+    int16_t x;
+    int16_t y; 
+} JoystickReading; 
+
 static RemoteButton buttons[] = {
-    { 
+    {   
+        // mode switch
         .pin = BUTTON_1,
         .on_ir_mode  = { ACT_TOGGLE_MODE, 0 },
         .on_controller_mode = { ACT_TOGGLE_MODE, 0 }
     },
     { 
+        //power button
         .pin = BUTTON_2,
         .on_ir_mode  = { ACT_IR, 0x17 },        
         .on_controller_mode = { ACT_CONTROLLER, 0 }
     },
     { 
+        //Vol+
         .pin = BUTTON_3,
         .on_ir_mode  = { ACT_IR, 0x1A },
         .on_controller_mode = { ACT_CONTROLLER, 0 }
     },
     { 
+        //Vol-
         .pin = BUTTON_4,
-        .on_ir_mode  = { ACT_IR, 0x1E },
+        .on_ir_mode  = { ACT_IR, 0x1B },
         .on_controller_mode = { ACT_CONTROLLER, 0 }
+        
     },
     { 
+        //Menu
         .pin = BUTTON_5,
         .on_ir_mode  = { ACT_IR, 0x15 },
-        .on_controller_mode = { ACT_CONTROLLER, 0}      
-    }
+        .on_controller_mode = { ACT_CONTROLLER, 0}
+    },
+    {   
+        //OK
+        .pin = JOYSTICK_BUTTON,
+        .on_ir_mode = {ACT_IR, 0x16},
+        .on_controller_mode = {ACT_CONTROLLER, 0}
+    },
 };
+
+JoystickReading read_joystick(void) {
+    adc_select_input(JOYSTICK_X);
+    uint16_t raw_x = adc_read();
+
+    adc_select_input(JOYSTICK_Y);
+    uint16_t raw_y = adc_read();
+
+    int16_t norm_x = (int16_t)raw_x - 2048;
+    int16_t norm_y = (int16_t)raw_y - 2048; 
+
+    JoystickReading reading; 
+    reading.x = (abs(norm_x) > deadzone_x) ? norm_x : 0; 
+    reading.y = (abs(norm_y) > deadzone_y) ? norm_y : 0; 
+
+    return reading; 
+}
+
+void poll_joystick() {
+
+    JoystickReading reading = read_joystick(); 
+
+    if(reading.x > 0){
+        send_nec(0x40, 0x0A);
+    } else if(reading.x < 0) {
+        send_nec(0x40, 0x1B);   
+    }
+    
+    if (reading.y > 0){
+        send_nec(0x40, 0x18);
+        
+    } else if(reading.y < 0){
+        send_nec(0x40, 0x19);
+        
+    }
+
+    sleep_ms(3000);
+}
 
 #define NUM_BUTTONS (sizeof(buttons) / sizeof(buttons[0]))
 
-static void handle_action(ButtonBehaviour *action){
+void handle_action(ButtonBehaviour *action){
     switch(action->type) {
         case ACT_TOGGLE_MODE: 
            toggle_mode();  
@@ -55,7 +116,6 @@ static void handle_action(ButtonBehaviour *action){
             break;
     }
 }
-
 static void handle_button_press_interrupt(uint pin, uint32_t events){
     if (!(events & GPIO_IRQ_EDGE_FALL)) return;
     uint32_t now = to_ms_since_boot(get_absolute_time());
@@ -86,4 +146,6 @@ void initialize_all_buttons() {
             gpio_set_irq_enabled(buttons[i].pin, GPIO_IRQ_EDGE_FALL, true);
         }
     }
+
+    adc_init();
 }

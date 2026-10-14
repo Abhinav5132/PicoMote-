@@ -24,6 +24,7 @@ target_link_libraries(remote-pi
   hardware_gpio
   hardware_pwm
   hardware_clocks
+  hardware_adc 
 )
 
 # Enable USB CDC serial, disable UART pins
