@@ -18,11 +18,17 @@
 //joystick 
 #define JOYSTICK_X 0
 #define JOYSTICK_Y 1
+#define JOYSTICK_X_GPIO 26
+#define JOYSTICK_Y_GPIO 27
 #define JOYSTICK_BUTTON 4
 #define JOYSTICK_POWER 3 //turn this off when the remote is in a sleep mode. 
 
 static uint16_t deadzone_x = 150; 
 static uint16_t deadzone_y = 150;
+static uint16_t joy_center_x = 2048; 
+static uint16_t joy_center_y = 2048;
+
+#define JOYSTICK_CALIBRATION_SAMPLES 32
 
 #define DORMANT_TIMEOUT 4000
 #define PSTATE_TIMEOUT 10000

@@ -1,3 +1,4 @@
+#include <pico/time.h>
 #include <stdint.h>
 #include "pico/stdlib.h"
 #include "pico/low_power.h"
@@ -12,7 +13,7 @@ int main() {
     stdio_init_all();
     init_ir(IR_TRANSMITTER);
     initialize_all_buttons();
-
+    calibrate_joystick(JOYSTICK_CALIBRATION_SAMPLES); 
     if (powman_hw->chip_reset & POWMAN_CHIP_RESET_HAD_SWCORE_PD_BITS) {
         set_mode(restore_state_from_powman());
     }

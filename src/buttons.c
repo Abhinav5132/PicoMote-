@@ -2,6 +2,7 @@
 #include "modes.h"
 #include <hardware/gpio.h>
 #include <pico/time.h>
+#include <pico/types.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -67,15 +68,32 @@ static RemoteButton buttons[] = {
 
 #define NUM_BUTTONS (sizeof(buttons) / sizeof(buttons[0]))
 
+void calibrate_joystick(int samples) {
+    int32_t sx = 0, sy = 0; 
+    for(int i = 0; i < samples; i++) {
+        adc_select_input(JOYSTICK_X); 
+        sx += adc_read(); 
+        adc_select_input(JOYSTICK_Y); 
+        sy += adc_read(); 
+        sleep_ms(2); 
+    }
+
+    joy_center_x = (int16_t)(sx / samples); 
+    joy_center_y = (int16_t)(sy / samples); 
+}
+
 JoystickReading read_joystick(void) {
+    if (get_sleep_state() == SLEEP || !gpio_get(JOYSTICK_POWER)){
+        return (JoystickReading){0, 0}; 
+    }
     adc_select_input(JOYSTICK_X);
     uint16_t raw_x = adc_read();
 
     adc_select_input(JOYSTICK_Y);
     uint16_t raw_y = adc_read();
 
-    int16_t norm_x = (int16_t)raw_x - 2048;
-    int16_t norm_y = (int16_t)raw_y - 2048; 
+    int16_t norm_x = (int16_t)raw_x - joy_center_x;
+    int16_t norm_y = (int16_t)raw_y - joy_center_y; 
 
     JoystickReading reading; 
     reading.x = (abs(norm_x) > deadzone_x) ? norm_x : 0; 
@@ -86,9 +104,16 @@ JoystickReading read_joystick(void) {
 
 void poll_joystick(void) {
     if (get_sleep_state() == SLEEP) return;
+
+    static uint32_t last_poll_time = 0; 
+    static uint32_t last_repeat_time = 0; 
+
+    uint32_t now = to_ms_since_boot(get_absolute_time()); 
+    if (now - last_poll_time < 20) return; 
+    last_poll_time = now; 
     
     JoystickReading reading = read_joystick(); 
-    if (reading.x != 0 || reading.y != 0){
+    if (reading.x != 0 || reading.y != 0){ 
         wake(); 
         if(reading.x > 0){
             send_nec(0x40, 0x0A);
@@ -101,10 +126,15 @@ void poll_joystick(void) {
         } else if(reading.y < 0){
             send_nec(0x40, 0x19);
         }
-    
-        sleep_ms(300);
-
     }
+}
+
+bool is_joystick_neutral() {
+    JoystickReading reading = read_joystick(); 
+    if (reading.x != 0 || reading.y != 0) {
+        return false; 
+    }
+    return true; 
 }
 
 void handle_action(ButtonBehaviour *action){
@@ -156,6 +186,9 @@ void initialize_all_buttons(void) {
     gpio_set_dir(JOYSTICK_POWER, GPIO_OUT);
     gpio_put(JOYSTICK_POWER, 1);
     adc_init();
+    adc_gpio_init(JOYSTICK_X_GPIO);
+    adc_gpio_init(JOYSTICK_Y_GPIO);
+    sleep_ms(10); 
 }
 
 void buttons_enable_dormant_wake(bool enable) {

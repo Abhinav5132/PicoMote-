@@ -8,7 +8,9 @@
 #include "hardware/structs/powman.h"
 #include "hardware/powman.h"
 #include "hardware/gpio.h"
+#include <pico/stdio.h>
 #include <pico/time.h>
+#include <stdbool.h>
 #include <stdio.h>
 
 void save_state_to_powman(RemoteMode mode) {
@@ -22,11 +24,9 @@ RemoteMode restore_state_from_powman(void) {
 void enter_pstate(void) {
     save_state_to_powman(get_mode()); 
 
-    //powman_enable_gpio_wakeup(1, BUTTON_1, false, false); 
-    //powman_enable_gpio_wakeup(2, BUTTON_2, false, false); 
-    //powman_enable_gpio_wakeup(3, JOYSTICK_BUTTON, true, false); 
-
-
+    powman_enable_gpio_wakeup(1, BUTTON_1, false, false); 
+    powman_enable_gpio_wakeup(2, BUTTON_2, false, false); 
+    powman_enable_gpio_wakeup(3, JOYSTICK_BUTTON, true, false); 
     pstate_bitset_t pstate = pstate_bitset_none(); 
     low_power_pstate_until_gpio_pin_state(BUTTON_3, false, false, &pstate, NULL);
 }
@@ -46,13 +46,14 @@ void manage_power(void) {
     uint32_t now = to_ms_64_since_boot(get_absolute_time()); 
 
     if (now - get_last_active_time() <= DORMANT_TIMEOUT) return;
-
-    printf("Entering Dormant sleep"); 
+    if (!is_joystick_neutral() || !gpio_get(JOYSTICK_BUTTON)) return; 
+    
     enter_dormant_sleep();
     absolute_time_t deadline = aon_timer_make_timeout_time_ms(PSTATE_TIMEOUT);
     low_power_dormant_until_aon_timer(deadline, DORMANT_CLOCK_SOURCE_LPOSC, NULL); 
 
     return_from_dormant_sleep(); 
+    stdio_init_all();
     printf("returned from sleep"); 
     if (absolute_time_diff_us(aon_timer_get_absolute_time(), deadline) <= 0) {
         // Woken up by the AON timer timeout go to P-state sleep
