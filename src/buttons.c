@@ -1,7 +1,10 @@
+#include "buttons.h"
 #include "modes.h"
+#include <hardware/gpio.h>
 #include <pico/time.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include "nec.h"
@@ -10,18 +13,18 @@
 #include "state.h"
 #include "hardware/adc.h"
 
-typedef struct{
-    uint pin;
+typedef struct {
+    int16_t x;
+    int16_t y; 
+} JoystickReading; 
+
+typedef struct {
+    int pin;
     ButtonBehaviour on_ir_mode;
     ButtonBehaviour on_controller_mode; 
     uint32_t last_press_time; 
     bool is_range; 
 } RemoteButton;
-
-typedef struct {
-    int16_t x;
-    int16_t y; 
-} JoystickReading; 
 
 static RemoteButton buttons[] = {
     {   
@@ -47,7 +50,6 @@ static RemoteButton buttons[] = {
         .pin = BUTTON_4,
         .on_ir_mode  = { ACT_IR, 0x1B },
         .on_controller_mode = { ACT_CONTROLLER, 0 }
-        
     },
     { 
         //Menu
@@ -62,6 +64,8 @@ static RemoteButton buttons[] = {
         .on_controller_mode = {ACT_CONTROLLER, 0}
     },
 };
+
+#define NUM_BUTTONS (sizeof(buttons) / sizeof(buttons[0]))
 
 JoystickReading read_joystick(void) {
     adc_select_input(JOYSTICK_X);
@@ -80,28 +84,28 @@ JoystickReading read_joystick(void) {
     return reading; 
 }
 
-void poll_joystick() {
-
-    JoystickReading reading = read_joystick(); 
-
-    if(reading.x > 0){
-        send_nec(0x40, 0x0A);
-    } else if(reading.x < 0) {
-        send_nec(0x40, 0x1B);   
-    }
+void poll_joystick(void) {
+    if (get_sleep_state() == SLEEP) return;
     
-    if (reading.y > 0){
-        send_nec(0x40, 0x18);
+    JoystickReading reading = read_joystick(); 
+    if (reading.x != 0 || reading.y != 0){
+        wake(); 
+        if(reading.x > 0){
+            send_nec(0x40, 0x0A);
+        } else if(reading.x < 0) {
+            send_nec(0x40, 0x1B);   
+        }
         
-    } else if(reading.y < 0){
-        send_nec(0x40, 0x19);
-        
+        if (reading.y > 0){
+            send_nec(0x40, 0x18);
+        } else if(reading.y < 0){
+            send_nec(0x40, 0x19);
+        }
+    
+        sleep_ms(300);
+
     }
-
-    sleep_ms(3000);
 }
-
-#define NUM_BUTTONS (sizeof(buttons) / sizeof(buttons[0]))
 
 void handle_action(ButtonBehaviour *action){
     switch(action->type) {
@@ -116,8 +120,10 @@ void handle_action(ButtonBehaviour *action){
             break;
     }
 }
+
 static void handle_button_press_interrupt(uint pin, uint32_t events){
     if (!(events & GPIO_IRQ_EDGE_FALL)) return;
+    wake();
     uint32_t now = to_ms_since_boot(get_absolute_time());
     for (int i = 0; i < NUM_BUTTONS; i++) {
         if (buttons[i].pin == pin) {
@@ -132,7 +138,7 @@ static void handle_button_press_interrupt(uint pin, uint32_t events){
     }
 }
 
-void initialize_all_buttons() {
+void initialize_all_buttons(void) {
     for (int i = 0; i<NUM_BUTTONS; i++) {
         gpio_init(buttons[i].pin);
         gpio_set_dir(buttons[i].pin, GPIO_IN);
@@ -146,6 +152,15 @@ void initialize_all_buttons() {
             gpio_set_irq_enabled(buttons[i].pin, GPIO_IRQ_EDGE_FALL, true);
         }
     }
-
+    gpio_init(JOYSTICK_POWER);
+    gpio_set_dir(JOYSTICK_POWER, GPIO_OUT);
+    gpio_put(JOYSTICK_POWER, 1);
     adc_init();
+}
+
+void buttons_enable_dormant_wake(bool enable) {
+    for (int i = 0; i < NUM_BUTTONS; i++) {
+        gpio_set_dormant_irq_enabled(buttons[i].pin, 
+            IO_BANK0_DORMANT_WAKE_INTE0_GPIO0_LEVEL_LOW_BITS, enable); 
+    }
 }

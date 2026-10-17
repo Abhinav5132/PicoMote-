@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.13)
 
-# Target Raspberry Pi Pico 2 (RP2350) - MUST be set before including SDK!
 set(PICO_BOARD pico2 CACHE STRING "Board type")
 
 include(pico_sdk_import.cmake)
@@ -8,7 +7,6 @@ include(pico_sdk_import.cmake)
 project(remote-pi C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
 pico_sdk_init()
 
 add_executable(remote-pi 
@@ -16,6 +14,7 @@ add_executable(remote-pi
   src/nec.c
   src/buttons.c
   src/state.c
+  src/remote_sleep.c
 )
 
 target_link_libraries(remote-pi 
@@ -25,8 +24,8 @@ target_link_libraries(remote-pi
   hardware_pwm
   hardware_clocks
   hardware_adc 
+  pico_low_power
 )
-
 # Enable USB CDC serial, disable UART pins
 pico_enable_stdio_usb(remote-pi 1)
 pico_enable_stdio_uart(remote-pi 0)
