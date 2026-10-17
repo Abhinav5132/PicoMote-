@@ -22,10 +22,9 @@ RemoteMode restore_state_from_powman(void) {
 void enter_pstate(void) {
     save_state_to_powman(get_mode()); 
 
-
-    powman_enable_gpio_wakeup(1, BUTTON_1, false, false); 
-    powman_enable_gpio_wakeup(2, BUTTON_2, false, false); 
-    //powman_enable_gpio_wakeup(3, JOYSTICK_BUTTON, false, false); 
+    //powman_enable_gpio_wakeup(1, BUTTON_1, false, false); 
+    //powman_enable_gpio_wakeup(2, BUTTON_2, false, false); 
+    //powman_enable_gpio_wakeup(3, JOYSTICK_BUTTON, true, false); 
 
 
     pstate_bitset_t pstate = pstate_bitset_none(); 
@@ -57,12 +56,14 @@ void manage_power(void) {
     printf("returned from sleep"); 
     if (absolute_time_diff_us(aon_timer_get_absolute_time(), deadline) <= 0) {
         // Woken up by the AON timer timeout go to P-state sleep
-        gpio_put(JOYSTICK_BUTTON, 1);
+        gpio_put(JOYSTICK_POWER, 1);
         sleep_ms(100);
-        gpio_put(JOYSTICK_BUTTON, 0);
+        gpio_put(JOYSTICK_POWER, 0);
         sleep_ms(100);
-        gpio_put(JOYSTICK_BUTTON, 1);
+        gpio_put(JOYSTICK_POWER, 1);
         sleep_ms(100); 
+        gpio_put(JOYSTICK_POWER, 0);
+        sleep_ms(100);
         enter_pstate();
     } else {
         // Woken up by a button press

@@ -24,5 +24,5 @@
 static uint16_t deadzone_x = 150; 
 static uint16_t deadzone_y = 150;
 
-#define DORMANT_TIMEOUT 2000
-#define PSTATE_TIMEOUT 20000
+#define DORMANT_TIMEOUT 4000
+#define PSTATE_TIMEOUT 10000
