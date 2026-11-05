@@ -2,3 +2,4 @@ build/
 .cache/
 .agents/
 .gemini/
+skills/system/run-workflow/SKILL.md

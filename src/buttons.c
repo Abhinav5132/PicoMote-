@@ -5,14 +5,14 @@
 #include <pico/types.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include "nec.h"
 #include "pico/stdlib.h"
-#include "defaults.h"
+#include "defaults/defaults.h"
 #include "state.h"
 #include "hardware/adc.h"
+#include "defaults/ir_defaults.h"
 
 typedef struct {
     int16_t x;
@@ -21,8 +21,7 @@ typedef struct {
 
 typedef struct {
     int pin;
-    ButtonBehaviour on_ir_mode;
-    ButtonBehaviour on_controller_mode; 
+    Action action; 
     uint32_t last_press_time; 
     bool is_range; 
 } RemoteButton;
@@ -31,38 +30,32 @@ static RemoteButton buttons[] = {
     {   
         // mode switch
         .pin = BUTTON_1,
-        .on_ir_mode  = { ACT_TOGGLE_MODE, 0 },
-        .on_controller_mode = { ACT_TOGGLE_MODE, 0 }
+        .action = ACTION_TOGGLE_MODE
     },
     { 
         //power button
         .pin = BUTTON_2,
-        .on_ir_mode  = { ACT_IR, 0x17 },        
-        .on_controller_mode = { ACT_CONTROLLER, 0 }
+        .action = ACTION_POWER
     },
     { 
         //Vol+
         .pin = BUTTON_3,
-        .on_ir_mode  = { ACT_IR, 0x1A },
-        .on_controller_mode = { ACT_CONTROLLER, 0 }
+        .action = ACTION_VOLUME_UP
     },
     { 
         //Vol-
         .pin = BUTTON_4,
-        .on_ir_mode  = { ACT_IR, 0x1B },
-        .on_controller_mode = { ACT_CONTROLLER, 0 }
+        .action = ACTION_VOLUME_DOWN
     },
     { 
         //Menu
         .pin = BUTTON_5,
-        .on_ir_mode  = { ACT_IR, 0x15 },
-        .on_controller_mode = { ACT_CONTROLLER, 0}
+        .action = ACTION_MENU
     },
     {   
         //OK
         .pin = JOYSTICK_BUTTON,
-        .on_ir_mode = {ACT_IR, 0x16},
-        .on_controller_mode = {ACT_CONTROLLER, 0}
+        .action = ACTION_CONFIRM
     },
 };
 
@@ -137,21 +130,37 @@ bool is_joystick_neutral() {
     return true; 
 }
 
-void handle_action(ButtonBehaviour *action){
-    switch(action->type) {
-        case ACT_TOGGLE_MODE: 
-           toggle_mode();  
-           break; 
-        case ACT_IR: 
-            send_nec(0x40, (uint8_t)action -> val);
-            break; 
-
-        case ACT_CONTROLLER: 
-            break;
+void handle_ir_action(Action action) {
+    uint8_t command; 
+    switch(action){
+        case ACTION_TOGGLE_MODE: toggle_mode(); break; 
+        case ACTION_POWER: command = TV_IR_POWER; break; 
+        case ACTION_VOLUME_UP: command = TV_IR_VOLUME_UP; break; 
+        case ACTION_VOLUME_DOWN: command = TV_IR_VOLUME_DOWN; break; 
+        case ACTION_MENU: command = TV_IR_MENU; break; 
+        case ACTION_CONFIRM: command = TV_IR_CONFIRM; break;
+      break;
     }
 }
 
-static void handle_button_press_interrupt(uint pin, uint32_t events){
+void handle_hid_action(Action action) {
+    //TODO 
+    return; 
+}
+
+void handle_action(Action action){
+    switch(get_mode()) {
+        case MODE_TV_IR: 
+            handle_ir_action(action); 
+            break;
+
+        case MODE_AIR_MOUSE: 
+            handle_hid_action(action); 
+            break; 
+    }
+}
+
+static void interrupt_handle_button_press(uint pin, uint32_t events){
     if (!(events & GPIO_IRQ_EDGE_FALL)) return;
     wake();
     uint32_t now = to_ms_since_boot(get_absolute_time());
@@ -159,9 +168,7 @@ static void handle_button_press_interrupt(uint pin, uint32_t events){
         if (buttons[i].pin == pin) {
             if (now - buttons[i].last_press_time > 250) {
                 buttons[i].last_press_time = now;
-                ButtonBehaviour *action = ( get_mode() == MODE_TV_IR) 
-                    ? &buttons[i].on_ir_mode: &buttons[i].on_controller_mode;
-                handle_action(action); 
+                handle_action(buttons[i].action); 
             }
             break; 
         }
@@ -177,7 +184,7 @@ void initialize_all_buttons(void) {
 
         if(i==0) {
             gpio_set_irq_enabled_with_callback(buttons[0].pin, GPIO_IRQ_EDGE_FALL, 
-                true, &handle_button_press_interrupt);
+                true, &interrupt_handle_button_press);
         } else {
             gpio_set_irq_enabled(buttons[i].pin, GPIO_IRQ_EDGE_FALL, true);
         }

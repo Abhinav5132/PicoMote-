@@ -5,9 +5,10 @@
 #include "hardware/structs/powman.h"
 #include "nec.h"
 #include "buttons.h"
-#include "defaults.h"
+#include "defaults/defaults.h"
 #include "state.h"
 #include "remote_sleep.h"
+
 
 int main() {
     stdio_init_all();

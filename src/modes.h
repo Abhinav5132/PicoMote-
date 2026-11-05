@@ -8,12 +8,10 @@ typedef enum {
 } RemoteMode; 
 
 typedef enum {
-    ACT_IR, 
-    ACT_CONTROLLER, 
-    ACT_TOGGLE_MODE
-} ActionType; 
-
-typedef struct {
-    ActionType type; 
-    uint32_t val; 
-} ButtonBehaviour; 
+    ACTION_TOGGLE_MODE, 
+    ACTION_POWER, 
+    ACTION_VOLUME_UP,
+    ACTION_VOLUME_DOWN,
+    ACTION_MENU,
+    ACTION_CONFIRM, 
+}Action; 

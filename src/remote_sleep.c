@@ -1,5 +1,5 @@
 #include "remote_sleep.h"
-#include "defaults.h"
+#include "defaults/defaults.h"
 #include "modes.h"
 #include "state.h"
 #include "buttons.h"
