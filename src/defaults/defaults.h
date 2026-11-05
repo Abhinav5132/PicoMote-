@@ -33,3 +33,4 @@ static uint16_t joy_center_y = 2048;
 #define DORMANT_TIMEOUT 4000
 #define PSTATE_TIMEOUT 10000
 
+#define BUTTON_QUEUE_SIZE 32

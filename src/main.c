@@ -10,6 +10,7 @@
 #include "remote_sleep.h"
 
 
+
 int main() {
     stdio_init_all();
     init_ir(IR_TRANSMITTER);
@@ -23,6 +24,7 @@ int main() {
     wake();
 
     while (true) {
+        process_button_events(); 
         poll_joystick();
         manage_power();
     }

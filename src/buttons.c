@@ -3,8 +3,10 @@
 #include <hardware/gpio.h>
 #include <pico/time.h>
 #include <pico/types.h>
+#include <pico/util/queue.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include "nec.h"
@@ -25,6 +27,13 @@ typedef struct {
     uint32_t last_press_time; 
     bool is_range; 
 } RemoteButton;
+
+typedef struct {
+    uint8_t button_index; 
+    uint32_t timestamp_ms;    
+} ButtonEvent; 
+
+static queue_t button_quque; 
 
 static RemoteButton buttons[] = {
     {   
@@ -165,14 +174,28 @@ static void interrupt_handle_button_press(uint pin, uint32_t events){
     wake();
     uint32_t now = to_ms_since_boot(get_absolute_time());
     for (int i = 0; i < NUM_BUTTONS; i++) {
-        if (buttons[i].pin == pin) {
-            if (now - buttons[i].last_press_time > 250) {
-                buttons[i].last_press_time = now;
-                handle_action(buttons[i].action); 
-            }
-            break; 
+        if (buttons[i].pin != pin) continue; 
+
+        ButtonEvent event = {
+            .button_index = (uint8_t)i,
+            .timestamp_ms = to_ms_since_boot(get_absolute_time()),
+        }; 
+
+        if (!queue_try_add(&button_quque, &event)){
+            printf("Button queue exceeded.");
         }
+       
+        return; 
     }
+}
+
+void process_button_events(void) {
+     ButtonEvent event; 
+     if (!queue_try_remove(&button_quque, &event)) return; 
+
+     wake();
+     Action action = buttons[event.button_index].action; 
+     handle_action(action); 
 }
 
 void initialize_all_buttons(void) {
@@ -195,6 +218,7 @@ void initialize_all_buttons(void) {
     adc_init();
     adc_gpio_init(JOYSTICK_X_GPIO);
     adc_gpio_init(JOYSTICK_Y_GPIO);
+    queue_init(&button_quque, sizeof(ButtonEvent), BUTTON_QUEUE_SIZE); 
     sleep_ms(10); 
 }
 
