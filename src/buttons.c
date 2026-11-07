@@ -1,4 +1,5 @@
 #include "buttons.h"
+#include "ir/nec.h"
 #include "modes.h"
 #include <hardware/gpio.h>
 #include <pico/time.h>
@@ -9,7 +10,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
-#include "nec.h"
 #include "pico/stdlib.h"
 #include "defaults/defaults.h"
 #include "state.h"
@@ -118,15 +118,15 @@ void poll_joystick(void) {
     if (reading.x != 0 || reading.y != 0){ 
         wake(); 
         if(reading.x > 0){
-            send_nec(0x40, 0x0A);
+            //send_nec(0x40, 0x0A);
         } else if(reading.x < 0) {
-            send_nec(0x40, 0x1B);   
+            //send_nec(0x40, 0x1B);   
         }
         
         if (reading.y > 0){
-            send_nec(0x40, 0x18);
+            //send_nec(0x40, 0x18);
         } else if(reading.y < 0){
-            send_nec(0x40, 0x19);
+            //send_nec(0x40, 0x19);
         }
     }
 }
@@ -139,50 +139,69 @@ bool is_joystick_neutral() {
     return true; 
 }
 
-void handle_ir_action(Action action) {
+bool handle_ir_action(Action action) {
+
+    if (action == ACTION_TOGGLE_MODE) {
+        toggle_mode(); 
+        return true; 
+    }
+    
     uint8_t command; 
     switch(action){
-        case ACTION_TOGGLE_MODE: toggle_mode(); break; 
         case ACTION_POWER: command = TV_IR_POWER; break; 
         case ACTION_VOLUME_UP: command = TV_IR_VOLUME_UP; break; 
         case ACTION_VOLUME_DOWN: command = TV_IR_VOLUME_DOWN; break; 
         case ACTION_MENU: command = TV_IR_MENU; break; 
         case ACTION_CONFIRM: command = TV_IR_CONFIRM; break;
-      break;
+        case ACTION_TOGGLE_MODE: break;
     }
+
+    return send_nec(TV_IR_ADDRESS, command); 
 }
 
-void handle_hid_action(Action action) {
+bool handle_hid_action(Action action) {
     //TODO 
-    return; 
+    if (action == ACTION_TOGGLE_MODE) {
+        toggle_mode(); 
+        return true; 
+    }
+    return false; 
 }
 
-void handle_action(Action action){
+bool try_handle_action(Action action){
     switch(get_mode()) {
         case MODE_TV_IR: 
-            handle_ir_action(action); 
+            if (!handle_ir_action(action)) return false; 
             break;
 
         case MODE_AIR_MOUSE: 
-            handle_hid_action(action); 
+            if (!handle_hid_action(action)) return false; 
             break; 
     }
+    return true; 
 }
 
+/*Maybe the interrupt function should only queue the pin and what the remote state was at that time to keep interrupt lean  */
 static void interrupt_handle_button_press(uint pin, uint32_t events){
     if (!(events & GPIO_IRQ_EDGE_FALL)) return;
     wake();
     uint32_t now = to_ms_since_boot(get_absolute_time());
     for (int i = 0; i < NUM_BUTTONS; i++) {
         if (buttons[i].pin != pin) continue; 
+        if ((uint32_t)(now - buttons[i].last_press_time < 256)) return; 
 
+        buttons[i].last_press_time = now; 
+        
         ButtonEvent event = {
             .button_index = (uint8_t)i,
-            .timestamp_ms = to_ms_since_boot(get_absolute_time()),
+            .timestamp_ms = now,
         }; 
-
-        if (!queue_try_add(&button_quque, &event)){
-            printf("Button queue exceeded.");
+        if (get_mode() == MODE_AIR_MOUSE)  {
+            //TODO no queue events, would be handled immediately 
+        } else {
+            if (!queue_try_add(&button_quque, &event)){
+                printf("Button queue exceeded.");
+            } 
         }
        
         return; 
@@ -191,14 +210,29 @@ static void interrupt_handle_button_press(uint pin, uint32_t events){
 
 void process_button_events(void) {
      ButtonEvent event; 
-     if (!queue_try_remove(&button_quque, &event)) return; 
+     if (queue_try_peek(&button_quque, &event)) {
+         Action action = buttons[event.button_index].action; 
+         if(try_handle_action(action)) {
+             queue_try_remove(&button_quque, &event); 
+         } else {
+             printf("Failed to process button event %d", action); 
+             queue_try_remove(&button_quque, &event); // ADD gracefull error handling here later 
+         }
+     }
+}
 
-     wake();
-     Action action = buttons[event.button_index].action; 
-     handle_action(action); 
+bool is_button_queue_empty(void){
+    return queue_is_empty(&button_quque); 
 }
 
 void initialize_all_buttons(void) {
+    gpio_init(JOYSTICK_POWER);
+    gpio_set_dir(JOYSTICK_POWER, GPIO_OUT);
+    gpio_put(JOYSTICK_POWER, 1);
+    adc_init();
+    adc_gpio_init(JOYSTICK_X_GPIO);
+    adc_gpio_init(JOYSTICK_Y_GPIO);
+    queue_init(&button_quque, sizeof(ButtonEvent), BUTTON_QUEUE_SIZE);
     for (int i = 0; i<NUM_BUTTONS; i++) {
         gpio_init(buttons[i].pin);
         gpio_set_dir(buttons[i].pin, GPIO_IN);
@@ -212,13 +246,6 @@ void initialize_all_buttons(void) {
             gpio_set_irq_enabled(buttons[i].pin, GPIO_IRQ_EDGE_FALL, true);
         }
     }
-    gpio_init(JOYSTICK_POWER);
-    gpio_set_dir(JOYSTICK_POWER, GPIO_OUT);
-    gpio_put(JOYSTICK_POWER, 1);
-    adc_init();
-    adc_gpio_init(JOYSTICK_X_GPIO);
-    adc_gpio_init(JOYSTICK_Y_GPIO);
-    queue_init(&button_quque, sizeof(ButtonEvent), BUTTON_QUEUE_SIZE); 
     sleep_ms(10); 
 }
 

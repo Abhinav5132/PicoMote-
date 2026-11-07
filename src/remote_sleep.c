@@ -10,6 +10,7 @@
 #include "hardware/gpio.h"
 #include <pico/stdio.h>
 #include <pico/time.h>
+#include <pico/util/queue.h>
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -46,7 +47,8 @@ void manage_power(void) {
     uint32_t now = to_ms_64_since_boot(get_absolute_time()); 
 
     if (now - get_last_active_time() <= DORMANT_TIMEOUT) return;
-    if (!is_joystick_neutral() || !gpio_get(JOYSTICK_BUTTON)) return; 
+    if (!is_joystick_neutral() || !gpio_get(JOYSTICK_BUTTON)) return;
+    if (!is_button_queue_empty()) return; 
     
     enter_dormant_sleep();
     absolute_time_t deadline = aon_timer_make_timeout_time_ms(PSTATE_TIMEOUT);

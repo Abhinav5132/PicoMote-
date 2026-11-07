@@ -1,0 +1,46 @@
+
+
+.pio_version 0 
+.program nec_carrier_control 
+
+.define BURST_IRQ 7 
+.define NUM_INITIAL_BURSTS 16 ; how many burst to transmit for a sync burst 
+
+.wrap_target 
+    pull ; laods data from the TX FIFO into the output shift register 
+
+    set x, (NUM_INITIAL_BURSTS - 1)
+
+start_burst: ; the initial bust to initiate nec communication 
+    irq BURST_IRQ
+    jmp x-- start_burst 
+
+    nop [15]
+    irq BURST_IRQ [1]
+
+data_burst: 
+    out x, 1 ; write one bit out of the OSR into scratch register 
+    jmp !x end_burst ; if x is zero send delay 
+    nop [3]
+
+end_burst: 
+    irq BURST_IRQ
+
+jmp !OSRE data_burst
+
+.wrap
+
+% c-sdk {
+    static inline void nec_carrier_control_init(PIO pio, uint sm, uint offset, float tick_rate, int bits_per_frame){
+        pio_sm_config c = nec_carrier_control_program_get_default_config(offset); 
+
+        sm_config_set_out_shift(&c, true, false, bits_per_frame); 
+        sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX); 
+
+        float div = clock_get_hz(clk_sys) / tick_rate; 
+        sm_config_set_clkdiv(&c, div);
+        
+        pio_sm_init(pio, sm, offset, &c); 
+        pio_sm_set_enabled(pio, sm, true);  
+    }
+%}

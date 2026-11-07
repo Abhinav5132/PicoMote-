@@ -1,0 +1,30 @@
+.pio_version 0
+
+.program nec_burst_control 
+
+.define NUM_CYCLES 21 
+.define BURST_IRQ 7
+.define public TICKS_PER_LOOP 4
+
+.wrap_target
+    set x, (NUM_CYCLES - 1) 
+    wait 1 irq BURST_IRQ
+cycle_loop: 
+    set pins, 1
+    set pins, 0 [1]
+    jmp x--, cycle_loop
+.wrap 
+
+% c-sdk {
+    static inline void nec_burst_control_init(PIO pio, uint sm, uint offset, uint pin, float freq){
+        pio_sm_config c = nec_burst_control_program_get_default_config(offset); 
+        sm_config_set_set_pins(&c, pin, 1); 
+        pio_gpio_init(pio, pin); 
+        
+        pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true); 
+        float div = clock_get_hz(clk_sys) / (freq * nec_burst_control_TICKS_PER_LOOP); 
+        sm_config_set_clkdiv(&c, div); 
+        pio_sm_init(pio, sm, offset, &c); 
+        pio_sm_set_enabled(pio, sm, true);   
+    }
+%}

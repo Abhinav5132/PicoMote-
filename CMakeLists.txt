@@ -11,17 +11,22 @@ pico_sdk_init()
 
 add_executable(remote-pi 
   src/main.c
-  src/nec.c
+  src/ir/nec.c
   src/buttons.c
   src/state.c
   src/remote_sleep.c
 )
 
+pico_generate_pio_header(remote-pi 
+${CMAKE_CURRENT_LIST_DIR}/src/ir/nec_burst_control.pio)
+pico_generate_pio_header(remote-pi
+${CMAKE_CURRENT_LIST_DIR}/src/ir/nec_carrier_control.pio)
+
 target_link_libraries(remote-pi 
   pico_stdlib 
   hardware_i2c
   hardware_gpio
-  hardware_pwm
+  hardware_pio 
   hardware_clocks
   hardware_adc 
   pico_low_power

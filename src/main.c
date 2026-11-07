@@ -1,19 +1,19 @@
 #include <pico/time.h>
 #include <stdint.h>
+#include "ir/nec.h"
 #include "pico/stdlib.h"
 #include "pico/low_power.h"
 #include "hardware/structs/powman.h"
-#include "nec.h"
 #include "buttons.h"
 #include "defaults/defaults.h"
 #include "state.h"
 #include "remote_sleep.h"
 
-
-
 int main() {
     stdio_init_all();
-    init_ir(IR_TRANSMITTER);
+    if (nec_tx_init(pio0, IR_TRANSMITTER) < 0) {
+        panic("NEC initialization failed");
+    }
     initialize_all_buttons();
     calibrate_joystick(JOYSTICK_CALIBRATION_SAMPLES); 
     if (powman_hw->chip_reset & POWMAN_CHIP_RESET_HAD_SWCORE_PD_BITS) {
