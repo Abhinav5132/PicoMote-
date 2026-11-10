@@ -8,6 +8,7 @@
 #include "defaults/defaults.h"
 #include "state.h"
 #include "remote_sleep.h"
+#include "joystick.h"
 
 int main() {
     stdio_init_all();
@@ -15,6 +16,7 @@ int main() {
         panic("NEC initialization failed");
     }
     initialize_all_buttons();
+    initialize_joystick(); 
     calibrate_joystick(JOYSTICK_CALIBRATION_SAMPLES); 
     if (powman_hw->chip_reset & POWMAN_CHIP_RESET_HAD_SWCORE_PD_BITS) {
         set_mode(restore_state_from_powman());

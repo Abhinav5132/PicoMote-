@@ -34,3 +34,4 @@ static uint16_t joy_center_y = 2048;
 #define PSTATE_TIMEOUT 10000
 
 #define BUTTON_QUEUE_SIZE 32
+#define BUTTON_RETRIES 3

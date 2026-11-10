@@ -13,6 +13,7 @@
 #include <pico/util/queue.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include "joystick.h"
 
 void save_state_to_powman(RemoteMode mode) {
     powman_hw->scratch[0] = (uint32_t)mode; 
