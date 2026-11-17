@@ -9,7 +9,7 @@ typedef struct {
     int16_t y; 
 } JoystickReading; 
 
-void init_joystick(void) {
+void initialize_joystick(void) {
     gpio_init(JOYSTICK_POWER);
     gpio_set_dir(JOYSTICK_POWER, GPIO_OUT);
     gpio_put(JOYSTICK_POWER, 1);

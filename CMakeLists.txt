@@ -15,6 +15,7 @@ add_executable(remote-pi
   src/buttons.c
   src/state.c
   src/remote_sleep.c
+  src/joystick.c
 )
 
 pico_generate_pio_header(remote-pi 
