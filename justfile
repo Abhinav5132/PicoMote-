@@ -11,5 +11,7 @@ flash: build
 clean:
     rm -rf build
 
-listen: 
-    sudo minicom -D /dev/ttyACM0 -b 115200
+# Follow the Pico USB serial port. Optionally pass a device path.
+[positional-arguments]
+listen port="":
+    sudo python3 scripts/listen.py "$1"

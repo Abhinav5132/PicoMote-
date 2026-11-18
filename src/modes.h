@@ -8,6 +8,7 @@ typedef enum {
 } RemoteMode; 
 
 typedef enum {
+    ACTION_UNBOUND = 0, 
     ACTION_TOGGLE_MODE, 
     ACTION_POWER, 
     ACTION_VOLUME_UP,

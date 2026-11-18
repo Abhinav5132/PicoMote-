@@ -9,6 +9,7 @@
 #include "hardware/powman.h"
 #include "hardware/gpio.h"
 #include <pico/stdio.h>
+#include <pico/stdio_usb.h>
 #include <pico/time.h>
 #include <pico/util/queue.h>
 #include <stdbool.h>
@@ -45,6 +46,12 @@ void return_from_dormant_sleep(void) {
 }
 
 void manage_power(void) {
+    static bool wake_log_pending;
+    if (wake_log_pending && stdio_usb_connected()) {
+        puts("Returned from dormant sleep");
+        wake_log_pending = false;
+    }
+
     uint32_t now = to_ms_64_since_boot(get_absolute_time()); 
 
     if (now - get_last_active_time() <= DORMANT_TIMEOUT) return;
@@ -56,8 +63,7 @@ void manage_power(void) {
     low_power_dormant_until_aon_timer(deadline, DORMANT_CLOCK_SOURCE_LPOSC, NULL); 
 
     return_from_dormant_sleep(); 
-    stdio_init_all();
-    printf("returned from sleep"); 
+    wake_log_pending = true;
     if (absolute_time_diff_us(aon_timer_get_absolute_time(), deadline) <= 0) {
         // Woken up by the AON timer timeout go to P-state sleep
         gpio_put(JOYSTICK_POWER, 1);
