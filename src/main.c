@@ -1,3 +1,4 @@
+#include "debug_log.h"
 #include <pico/time.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -20,15 +21,17 @@ int main() {
     initialize_joystick(); 
     calibrate_joystick(JOYSTICK_CALIBRATION_SAMPLES); 
     if (powman_hw->chip_reset & POWMAN_CHIP_RESET_HAD_SWCORE_PD_BITS) {
+        debug_log("[INFO] Restarted after P-state sleep\n");
         set_mode(restore_state_from_powman());
     }
 
     low_power_start_aon_timer();
     wake();
-    printf("[INFO] Finished initialization.\n");
+    debug_log("[INFO] Finished initialization.\n");
     while (true) {
         process_button_events(); 
         poll_joystick();
+        if (DEBUG) debug_log_poll();
         manage_power();
     }
     return 0; 

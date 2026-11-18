@@ -1,3 +1,4 @@
+#include "debug_log.h"
 #include "state.h"
 #include "defaults/defaults.h"
 #include "modes.h"
@@ -35,7 +36,7 @@ void toggle_mode(void) {
 
 void set_mode(RemoteMode mode) {
     current_state.mode = mode;
-    printf("[INFO] mode changed to %d\n", mode);
+    debug_log("[INFO] mode changed to %d\n", mode);
 }
 
 RemoteSleepState get_sleep_state(void) {
@@ -46,7 +47,7 @@ void sleep(void) {
     if (current_state.current_sleep_state == AWAKE) {
         current_state.current_sleep_state = SLEEP;
         gpio_put(JOYSTICK_POWER, 0); 
-        printf("[INFO] Going to sleep.\n");
+        debug_log("[INFO] Going to sleep.\n");
     }
 }
 
@@ -54,7 +55,7 @@ void wake(void){
     if (current_state.current_sleep_state == SLEEP) {
         current_state.current_sleep_state = AWAKE;
         gpio_put(JOYSTICK_POWER, 1);
-        printf("[INFO] Woke from sleep.\n");
+        debug_log("[INFO] Woke from sleep.\n");
     }
     current_state.last_activity_time = to_ms_since_boot(get_absolute_time());
 }

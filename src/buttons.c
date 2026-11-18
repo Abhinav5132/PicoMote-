@@ -1,3 +1,4 @@
+#include "debug_log.h"
 #include "buttons.h"
 #include "ir/nec.h"
 #include "modes.h"
@@ -14,10 +15,12 @@
 #include "defaults/ir_defaults.h"
 
 typedef struct {
+    uint32_t pressed_us;
     Action action; 
     RemoteMode mode;  
 } ButtonEvent; 
 
+static volatile uint32_t dropped_events;
 static queue_t button_queque;
 
 typedef struct {
@@ -44,7 +47,7 @@ static const uint8_t pin_to_button[] = {
     [JOYSTICK_BUTTON] = 6,
 };
 
-#define BUTTON_DEBOUNCE_MS 250u
+
 #define NUM_BUTTONS (sizeof(buttons) / sizeof(buttons[0]))
 
 
@@ -100,32 +103,31 @@ static void interrupt_handle_button_press(uint pin, uint32_t events){
     if (now - buttons[index].last_press_time < BUTTON_DEBOUNCE_MS) return;
     buttons[index].last_press_time = now;
 
-    wake();
     Action action = buttons[index].action;
     RemoteMode mode = get_mode();
     ButtonEvent event = {
+        .pressed_us = time_us_32(),
         .action = action, 
         .mode = mode,
     }; 
 
-    printf("[INFO] queing pin: %u, action: %s mode: %u\n", pin, action_name(action), mode); 
-
-    if (!queue_try_add(&button_queque, &event)){ // Should maybe retry once the queue empties. 
-        printf("[WARN] Button queue exceeded. Dropping recent events\n");
-    } 
+    if (!queue_try_add(&button_queque, &event)) ++dropped_events;
 }
 
 void process_button_events(void) {
     ButtonEvent event;
     if (!queue_try_remove(&button_queque, &event)) return;
 
+    uint32_t delay_us = time_us_32() - event.pressed_us;
+    wake();
     for (int i = 0; i < BUTTON_RETRIES; i++) {
         if (try_handle_action(event.action, event.mode)) {
-            printf("[INFO] Handled action: %s, mode: %s\n",
-                action_name(event.action), mode_name(event.mode));
+            debug_log("[INFO] Handled %s, mode: %s, irq_us=%lu, dispatch_delay_us=%lu, queue_drops=%lu\n",
+                action_name(event.action), mode_name(event.mode), (unsigned long)event.pressed_us,
+                (unsigned long)delay_us, (unsigned long)dropped_events);
             return;
         }
-        printf("[ERROR] Failed to handle action: %s, mode: %s\n",
+        debug_log("[ERROR] Failed to handle action: %s, mode: %s\n",
             action_name(event.action), mode_name(event.mode));
     }
 }

@@ -1,3 +1,4 @@
+#include "../debug_log.h"
 #include "nec.h"
 #include "hardware/clocks.h"
 #include "nec_burst_control.pio.h"
@@ -52,17 +53,17 @@ int nec_tx_init(PIO pio, uint pin) {
 
 bool send_nec(uint8_t address, uint8_t command) {
     if (tx_sm < 0) {
-        printf("[ERROR] NEC send failed: transmitter state machine is not initialized (tx_sm=%d)\n", tx_sm);
+        debug_log("[ERROR] NEC send failed: transmitter state machine is not initialized (tx_sm=%d)\n", tx_sm);
         return false;
     }
 
     uint sm = (uint)tx_sm; 
     if (pio_sm_is_tx_fifo_full(tx_pio, sm)) {
-        printf("[ERROR] NEC send failed: PIO TX FIFO is full (pio=%p, sm=%u)\n", (void *)tx_pio, sm);
+        debug_log("[ERROR] NEC send failed: PIO TX FIFO is full (pio=%p, sm=%u)\n", (void *)tx_pio, sm);
         return false;
     }
     
     pio_sm_put(tx_pio, sm, nec_encode_frame(address, command)); 
-    printf("[INFO] Sending NEC command %u\n", command);
+    debug_log("[INFO] Sending NEC command %u\n", command);
     return true; 
 }

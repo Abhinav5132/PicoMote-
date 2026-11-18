@@ -1,3 +1,4 @@
+#include "debug_log.h"
 #include "remote_sleep.h"
 #include "defaults/defaults.h"
 #include "modes.h"
@@ -25,7 +26,7 @@ RemoteMode restore_state_from_powman(void) {
 }
 
 void enter_pstate(void) {
-    printf("[INFO] Entering P-State Sleep\n");
+    debug_log("[INFO] Entering P-State Sleep\n");
     save_state_to_powman(get_mode()); 
 
     powman_enable_gpio_wakeup(1, BUTTON_1, false, false); 
@@ -36,7 +37,7 @@ void enter_pstate(void) {
 }
 
 void enter_dormant_sleep(void) {
-    printf("[INFO] Entering dormant sleep\n");
+    debug_log("[INFO] Entering dormant sleep\n");
     gpio_put(JOYSTICK_POWER, 0); 
     buttons_enable_dormant_wake(true);
     sleep();
@@ -48,12 +49,6 @@ void return_from_dormant_sleep(void) {
 }
 
 void manage_power(void) {
-    static bool wake_log_pending;
-    if (wake_log_pending && stdio_usb_connected()) {
-        puts("[INFO] Returned from dormant sleep");
-        wake_log_pending = false;
-    }
-
     uint32_t now = to_ms_64_since_boot(get_absolute_time()); 
 
     if (now - get_last_active_time() <= DORMANT_TIMEOUT) return;
@@ -65,7 +60,7 @@ void manage_power(void) {
     low_power_dormant_until_aon_timer(deadline, DORMANT_CLOCK_SOURCE_LPOSC, NULL); 
 
     return_from_dormant_sleep(); 
-    wake_log_pending = true;
+    debug_log("[INFO] Returned from dormant sleep\n");
     if (absolute_time_diff_us(aon_timer_get_absolute_time(), deadline) <= 0) {
         // Woken up by the AON timer timeout go to P-state sleep
         gpio_put(JOYSTICK_POWER, 1);
@@ -81,6 +76,6 @@ void manage_power(void) {
         // Woken up by a button press
         
         wake();
-        printf("[INFO] Woken up by a button press\n");
+        debug_log("[INFO] Woken up by a button press\n");
     }
 }

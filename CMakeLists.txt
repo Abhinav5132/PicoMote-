@@ -10,6 +10,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 pico_sdk_init()
 
 add_executable(remote-pi 
+  src/debug_log.c
   src/main.c
   src/ir/nec.c
   src/buttons.c
