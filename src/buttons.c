@@ -21,23 +21,27 @@ typedef struct {
 static queue_t button_queque;
 
 typedef struct {
+    uint pin; 
     Action action;  
     uint32_t last_press_time; 
 } RemoteButton;
 
 static RemoteButton buttons[] = {
-    // mode switch
-    [BUTTON_1] = {.action = ACTION_TOGGLE_MODE},
-    //power button
-    [BUTTON_2] = {.action = ACTION_POWER},
-    //Vol+        
-    [BUTTON_3] = {.action = ACTION_VOLUME_UP},
-    //Vol-
-    [BUTTON_4] = {.action = ACTION_VOLUME_DOWN},
-    //Menu
-    [BUTTON_5] = {.action = ACTION_MENU},
-    //OK
-    [JOYSTICK_BUTTON] = {.action = ACTION_CONFIRM},
+    { .pin = BUTTON_1,        .action = ACTION_TOGGLE_MODE },
+    { .pin = BUTTON_2,        .action = ACTION_POWER },
+    { .pin = BUTTON_3,        .action = ACTION_VOLUME_UP },
+    { .pin = BUTTON_4,        .action = ACTION_VOLUME_DOWN },
+    { .pin = BUTTON_5,        .action = ACTION_MENU },
+    { .pin = JOYSTICK_BUTTON, .action = ACTION_CONFIRM },
+};
+
+static const uint8_t pin_to_button[] = {
+    [BUTTON_1]        = 1,
+    [BUTTON_2]        = 2,
+    [BUTTON_3]        = 3,
+    [BUTTON_4]        = 4,
+    [BUTTON_5]        = 5,
+    [JOYSTICK_BUTTON] = 6,
 };
 
 #define NUM_BUTTONS (sizeof(buttons) / sizeof(buttons[0]))
@@ -86,17 +90,18 @@ bool try_handle_action(Action action, RemoteMode mode){
     return true; 
 }
 
-static Action button_to_action(uint pin) {
-    if (pin >= NUM_BUTTONS || buttons[pin].action == 0) return ACTION_UNBOUND; 
-    return buttons[pin].action; 
+static Action action_for_pin(uint pin) {
+    if(pin >= sizeof(pin_to_button)) return NULL; 
+    RemoteButton button = buttons[pin_to_button[pin] - 1]; 
+    return button.action; 
 }
 
 static void interrupt_handle_button_press(uint pin, uint32_t events){
     if (!(events & GPIO_IRQ_EDGE_FALL)) return;
     wake();
 
-    Action action = button_to_action(pin);
-    if (action == ACTION_UNBOUND) return; 
+    Action action = action_for_pin(pin);
+    if (!action) return; 
     uint32_t now = to_ms_since_boot(get_absolute_time());
 
     if((uint32_t)(now - buttons[pin].last_press_time) < 50u) return; 
@@ -107,32 +112,11 @@ static void interrupt_handle_button_press(uint pin, uint32_t events){
         .mode = mode,
     }; 
 
-    printf("pin: %u, mode: %u\n", pin, mode); 
+    printf("[INFO] queing pin: %u, action: %s mode: %u\n", pin, action_name(action), mode); 
 
     if (!queue_try_add(&button_queque, &event)){ // Should maybe retry once the queue empties. 
-        printf("Button queue exceeded.");
+        printf("[WARN] Button queue exceeded. Dropping recent events");
     } 
-}
-
-static const char *action_name(Action action) {
-    switch (action) {
-        case ACTION_UNBOUND: return "UNBOUND";
-        case ACTION_TOGGLE_MODE: return "TOGGLE_MODE";
-        case ACTION_POWER: return "POWER";
-        case ACTION_VOLUME_UP: return "VOLUME_UP";
-        case ACTION_VOLUME_DOWN: return "VOLUME_DOWN";
-        case ACTION_MENU: return "MENU";
-        case ACTION_CONFIRM: return "CONFIRM";
-    }
-    return "UNKNOWN";
-}
-
-static const char *mode_name(RemoteMode mode) {
-    switch (mode) {
-        case MODE_TV_IR: return "TV_IR";
-        case MODE_AIR_MOUSE: return "AIR_MOUSE";
-    }
-    return "UNKNOWN";
 }
 
 void process_button_events(void) {
