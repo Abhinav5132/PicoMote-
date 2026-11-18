@@ -25,7 +25,7 @@ int main() {
 
     low_power_start_aon_timer();
     wake();
-    printf("[INFO] Finished initialization.");
+    printf("[INFO] Finished initialization.\n");
     while (true) {
         process_button_events(); 
         poll_joystick();

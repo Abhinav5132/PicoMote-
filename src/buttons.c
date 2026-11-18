@@ -44,6 +44,7 @@ static const uint8_t pin_to_button[] = {
     [JOYSTICK_BUTTON] = 6,
 };
 
+#define BUTTON_DEBOUNCE_MS 250u
 #define NUM_BUTTONS (sizeof(buttons) / sizeof(buttons[0]))
 
 
@@ -90,22 +91,17 @@ bool try_handle_action(Action action, RemoteMode mode){
     return true; 
 }
 
-static Action action_for_pin(uint pin) {
-    if(pin >= sizeof(pin_to_button)) return NULL; 
-    RemoteButton button = buttons[pin_to_button[pin] - 1]; 
-    return button.action; 
-}
-
 static void interrupt_handle_button_press(uint pin, uint32_t events){
     if (!(events & GPIO_IRQ_EDGE_FALL)) return;
-    wake();
+    if (pin >= sizeof(pin_to_button) || pin_to_button[pin] == 0) return;
 
-    Action action = action_for_pin(pin);
-    if (!action) return; 
+    uint index = pin_to_button[pin] - 1;
     uint32_t now = to_ms_since_boot(get_absolute_time());
+    if (now - buttons[index].last_press_time < BUTTON_DEBOUNCE_MS) return;
+    buttons[index].last_press_time = now;
 
-    if((uint32_t)(now - buttons[pin].last_press_time) < 50u) return; 
-    buttons[pin].last_press_time = now; 
+    wake();
+    Action action = buttons[index].action;
     RemoteMode mode = get_mode();
     ButtonEvent event = {
         .action = action, 
@@ -115,7 +111,7 @@ static void interrupt_handle_button_press(uint pin, uint32_t events){
     printf("[INFO] queing pin: %u, action: %s mode: %u\n", pin, action_name(action), mode); 
 
     if (!queue_try_add(&button_queque, &event)){ // Should maybe retry once the queue empties. 
-        printf("[WARN] Button queue exceeded. Dropping recent events");
+        printf("[WARN] Button queue exceeded. Dropping recent events\n");
     } 
 }
 
@@ -145,7 +141,7 @@ void initialize_all_buttons(void) {
         gpio_init(buttons[i].pin);
         gpio_set_dir(buttons[i].pin, GPIO_IN);
         gpio_pull_up(buttons[i].pin);
-        buttons[i].last_press_time = 0;
+        buttons[i].last_press_time = to_ms_since_boot(get_absolute_time()) - BUTTON_DEBOUNCE_MS;
 
         if(i==0) {
             gpio_set_irq_enabled_with_callback(buttons[0].pin, GPIO_IRQ_EDGE_FALL, 

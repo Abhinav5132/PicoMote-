@@ -63,8 +63,7 @@ void poll_joystick(void) {
     last_poll_time = now; 
     
     JoystickReading reading = read_joystick(); 
-    if (reading.x != 0 || reading.y != 0){ 
-        wake(); 
+    if (reading.x != 0 || reading.y != 0){  
         if(reading.x > 0){
             //send_nec(0x40, 0x0A);
         } else if(reading.x < 0) {

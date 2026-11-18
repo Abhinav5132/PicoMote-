@@ -35,7 +35,7 @@ void toggle_mode(void) {
 
 void set_mode(RemoteMode mode) {
     current_state.mode = mode;
-    printf("[INFO] mode changed to %d /n", mode); 
+    printf("[INFO] mode changed to %d\n", mode);
 }
 
 RemoteSleepState get_sleep_state(void) {
@@ -46,17 +46,17 @@ void sleep(void) {
     if (current_state.current_sleep_state == AWAKE) {
         current_state.current_sleep_state = SLEEP;
         gpio_put(JOYSTICK_POWER, 0); 
-        printf("[INFO] Going to sleep."); 
+        printf("[INFO] Going to sleep.\n");
     }
 }
 
 void wake(void){
     if (current_state.current_sleep_state == SLEEP) {
         current_state.current_sleep_state = AWAKE;
-        gpio_put(JOYSTICK_POWER, 1); 
+        gpio_put(JOYSTICK_POWER, 1);
+        printf("[INFO] Woke from sleep.\n");
     }
     current_state.last_activity_time = to_ms_since_boot(get_absolute_time());
-    printf("[INFO] Waking up."); 
 }
 
 bool should_sleep(uint32_t timeout_ms) {
