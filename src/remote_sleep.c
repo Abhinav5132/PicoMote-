@@ -25,6 +25,7 @@ RemoteMode restore_state_from_powman(void) {
 }
 
 void enter_pstate(void) {
+    printf("[INFO] Entering P-State Sleep"); 
     save_state_to_powman(get_mode()); 
 
     powman_enable_gpio_wakeup(1, BUTTON_1, false, false); 
@@ -35,6 +36,7 @@ void enter_pstate(void) {
 }
 
 void enter_dormant_sleep(void) {
+    printf("[INFO] Entering dormant sleep"); 
     gpio_put(JOYSTICK_POWER, 0); 
     buttons_enable_dormant_wake(true);
     sleep();
@@ -48,7 +50,7 @@ void return_from_dormant_sleep(void) {
 void manage_power(void) {
     static bool wake_log_pending;
     if (wake_log_pending && stdio_usb_connected()) {
-        puts("Returned from dormant sleep");
+        puts("[INFO] Returned from dormant sleep");
         wake_log_pending = false;
     }
 
@@ -77,6 +79,8 @@ void manage_power(void) {
         enter_pstate();
     } else {
         // Woken up by a button press
-        wake(); 
+        
+        wake();
+        printf("[INFO] Woken up by a button press");  
     }
 }

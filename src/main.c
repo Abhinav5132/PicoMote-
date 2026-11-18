@@ -1,5 +1,6 @@
 #include <pico/time.h>
 #include <stdint.h>
+#include <stdio.h>
 #include "ir/nec.h"
 #include "pico/stdlib.h"
 #include "pico/low_power.h"
@@ -13,7 +14,7 @@
 int main() {
     stdio_init_all();
     if (nec_tx_init(pio0, IR_TRANSMITTER) < 0) {
-        panic("NEC initialization failed");
+        panic("[ERROR] NEC initialization failed");
     }
     initialize_all_buttons();
     initialize_joystick(); 
@@ -24,7 +25,7 @@ int main() {
 
     low_power_start_aon_timer();
     wake();
-
+    printf("[INFO] Finished initialization.");
     while (true) {
         process_button_events(); 
         poll_joystick();

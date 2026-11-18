@@ -2,6 +2,7 @@
 #include "hardware/clocks.h"
 #include "nec_burst_control.pio.h"
 #include "nec_carrier_control.pio.h"
+#include <stdio.h>
 
 
 static PIO tx_pio;
@@ -56,6 +57,6 @@ bool send_nec(uint8_t address, uint8_t command) {
     if(pio_sm_is_tx_fifo_full(tx_pio, sm)) return false; 
     
     pio_sm_put(tx_pio, sm, nec_encode_frame(address, command)); 
-
+    printf("[INFO] Sending NEC command %u", command); 
     return true; 
 }
