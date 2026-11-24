@@ -39,3 +39,4 @@ static uint16_t joy_center_y = 2048;
 #define BUTTON_DEBOUNCE_MS 250u
 
 #define DEBUG true
+#define DEBUG_NEC true 

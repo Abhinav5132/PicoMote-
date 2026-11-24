@@ -1,10 +1,8 @@
-#include "../debug_log.h"
+#include "../debug/debug_log.h"
 #include "nec.h"
 #include "hardware/clocks.h"
 #include "nec_burst_control.pio.h"
 #include "nec_carrier_control.pio.h"
-#include <stdio.h>
-
 
 static PIO tx_pio;
 static int tx_sm = -1; 

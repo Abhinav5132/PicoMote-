@@ -1,4 +1,4 @@
-#include "debug_log.h"
+#include "debug/debug_log.h"
 #include "remote_sleep.h"
 #include "defaults/defaults.h"
 #include "modes.h"

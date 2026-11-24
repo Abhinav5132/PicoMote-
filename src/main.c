@@ -1,4 +1,4 @@
-#include "debug_log.h"
+#include "debug/debug_log.h"
 #include <pico/time.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -11,6 +11,7 @@
 #include "state.h"
 #include "remote_sleep.h"
 #include "joystick.h"
+#include "debug/test_nec.h"
 
 int main() {
     stdio_init_all();

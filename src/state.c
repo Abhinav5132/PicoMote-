@@ -1,4 +1,4 @@
-#include "debug_log.h"
+#include "debug/debug_log.h"
 #include "state.h"
 #include "defaults/defaults.h"
 #include "modes.h"
@@ -7,7 +7,6 @@
 #include <pico/time.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 
 // when the remote is not in use it should go to sleep. 
 // when in sleep no pooling occurs and only when the remote is brought into a awake state

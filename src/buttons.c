@@ -1,4 +1,4 @@
-#include "debug_log.h"
+#include "debug/debug_log.h"
 #include "buttons.h"
 #include "ir/nec.h"
 #include "modes.h"
@@ -8,7 +8,6 @@
 #include <pico/util/queue.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <sys/types.h>
 #include "defaults/defaults.h"
 #include "state.h"
